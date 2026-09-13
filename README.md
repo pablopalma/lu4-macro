@@ -1,7 +1,8 @@
-# Macro Manager v27 — F1–F12
-### LU4 (Lineage Universe 4) · IKAR Core Pipe
+# Macro Manager v5 — F1–F12
 
-Automatizador de habilidades para LU4 que envía comandos directamente al pipe de IKAR — sin simulación de teclado, sin pulsaciones de OS, sin ser detectado por anti-cheat a nivel de kernel.
+Automatizador de teclas F1–F12 para Windows. Captura cualquier ventana de juego y envía las teclas directamente a ese proceso — sin depender de software externo.
+
+Soporta múltiples instancias simultáneas (una por cuenta).
 
 ---
 
@@ -10,21 +11,19 @@ Automatizador de habilidades para LU4 que envía comandos directamente al pipe d
 | Requisito | Detalle |
 |-----------|---------|
 | **Python 3.8+** | Solo stdlib — sin pip install |
-| **IKAR con core.exe activo** | Debe estar inyectado en el juego |
-| **LU4 en ejecución** | El pipe solo existe cuando IKAR está conectado |
-| **Windows 10/11** | Usa `kernel32.dll` para named pipes |
+| **Windows 10/11** | Usa `user32.dll` para envío de teclas |
+| **El juego abierto** | Necesita capturar la ventana del juego |
 
 ---
 
 ## Inicio Rápido
 
 ```
-1. Abrir LU4
-2. Lanzar IKAR → esperar que core.exe se conecte al juego
-3. Ejecutar:  python MacroFKeys.py
-4. Presionar ⚡ Conectar en la barra superior
-5. Configurar Skill ID + Delay en cada fila F1–F12
-6. Presionar ▶ START
+1. Ejecutar:  python MacroFKeys.py
+2. Hacer clic en 🎯 Capturar ventana
+3. Tenés 3 segundos para hacer Alt+Tab al juego
+4. Configurar delay y opciones en cada fila F1–F12
+5. Presionar ▶ START
 ```
 
 ---
@@ -32,16 +31,19 @@ Automatizador de habilidades para LU4 que envía comandos directamente al pipe d
 ## Interfaz
 
 ```
-┌─ Pipe IKAR: \\.\pipe\scripthost-debug  │ botId: 1 │ ⚡ Conectar │ ✓ Conectado botId=4 ─┐
-│ [debug: F1] skill=1042  ✓                                                                │
-├──────────┬───────┬──────────┬─────────┬──────────┬───────┬───────┬────────┬─────────────┤
-│ START/STOP│ Tecla │ Skill ID │ Repetir │ Infinito │ Veces │ Delay │ Unidad │   Estado    │
-├──────────┼───────┼──────────┼─────────┼──────────┼───────┼───────┼────────┼─────────────┤
-│ ■ STOP   │  F1   │   1042   │   ☑    │    ☑    │   —   │  800  │   ms   │  ● ACTIVO  │
-│ ▶ START  │  F2   │   1055   │   ☑    │    ☐    │   5   │   2   │   s    │     —       │
-│ ▶ START  │  F3   │    0     │   ☐    │    ☐    │   1   │ 1000  │   ms   │     —       │
-└──────────┴───────┴──────────┴─────────┴──────────┴───────┴───────┴────────┴─────────────┘
-                                          ⛔ Detener Todo
+┌──────────────────────────────────────────────────────────────┐
+│ 🎯 Capturar ventana  │  ✓  Lineage Universe 4               │
+├──────────────────────────────────────────────────────────────┤
+│         🔕 Modo Fondo  (sin foco)                            │
+├──────────┬───────┬─────────┬──────────┬───────┬─────────┬───┤
+│ START/STOP│ Tecla │ Repetir │ Infinito │ Veces │ Delay ms│Est│
+├──────────┼───────┼─────────┼──────────┼───────┼─────────┼───┤
+│ ■ STOP   │  F1   │   ☑    │    ☑    │   —   │   800   │ ● │
+│ ▶ START  │  F2   │   ☑    │    ☐    │   5   │  2000   │ — │
+│ ▶ START  │  F3   │   ☐    │    ☐    │   1   │   500   │ — │
+└──────────┴───────┴─────────┴──────────┴───────┴─────────┴───┘
+        Para varias cuentas: abrí otra copia de este programa
+                    ⛔ Detener Todo
 ```
 
 ---
@@ -51,95 +53,76 @@ Automatizador de habilidades para LU4 que envía comandos directamente al pipe d
 | Campo | Descripción |
 |-------|-------------|
 | **START/STOP** | Activa o detiene el macro para esa tecla |
-| **Skill ID** | ID numérico de la habilidad en LU4 |
 | **Repetir** | ☑ = repite con delay · ☐ = dispara una sola vez |
 | **Infinito** | ☑ = repite indefinidamente (ignora Veces) |
 | **Veces** | Cantidad de repeticiones si Infinito está desactivado |
-| **Delay** | Tiempo entre cada uso de skill |
-| **Unidad** | `ms` = milisegundos · `s` = segundos · `min` = minutos |
+| **Delay ms** | Tiempo entre cada pulsación, en milisegundos |
 
 ---
 
-## Configurar el Delay
+## Modos de Envío
 
-El delay se interpreta según la unidad del dropdown:
+El botón central alterna entre dos modos:
 
-- `800 ms` → usa skill cada 0.8 segundos  
-- `2 s` → usa skill cada 2 segundos  
-- `0.5 min` → usa skill cada 30 segundos  
+### 🔕 Modo Fondo (por defecto)
+Envía la tecla con `PostMessage` directamente a la ventana del juego **sin mover el foco**. El juego sigue en segundo plano, podés seguir usando el teclado normalmente.
 
-> **Mínimo efectivo:** 50 ms. Valores menores se truncan automáticamente.
+- Funciona en la mayoría de juegos con procesamiento de mensajes estándar
+- No interrumpe lo que estás haciendo
+
+### ⚡ Modo Flash
+Lleva el juego al frente ~30ms, manda la tecla con `SendInput` (input real de hardware) y devuelve el foco a la ventana anterior.
+
+- Necesario para juegos UE5/UE4 que usan **Raw Input** o **DirectInput**
+- La ventana del juego parpadea brevemente (~30ms)
+- Usar este modo si Modo Fondo no funciona
 
 ---
 
-## Barra de Conexión
+## Múltiples Cuentas
 
-| Campo | Descripción |
-|-------|-------------|
-| **Pipe IKAR** | Por defecto `\\.\pipe\scripthost-debug`. Solo cambiar si IKAR usa `--pipe-host` |
-| **botId** | Se actualiza automáticamente al recibir el primer `world_state` del juego |
-| **⚡ Conectar** | Abre la conexión. Cambia a ⛔ Desconectar cuando está activo |
+Cada instancia del programa captura y controla **una ventana independiente**. Para usar el macro con varias cuentas al mismo tiempo:
 
-### Estados de Conexión
+```
+python MacroFKeys.py   ← Instancia #1 → captura Cuenta A
+python MacroFKeys.py   ← Instancia #2 → captura Cuenta B
+python MacroFKeys.py   ← Instancia #3 → captura Cuenta C
+```
 
-| Estado | Significado |
-|--------|-------------|
-| `— No conectado` | Estado inicial |
-| `↔ Esperando world_state…` | Pipe abierto, esperando evento del juego |
-| `✓ Conectado  botId=X` | Listo para enviar habilidades |
-| `✗ No se pudo conectar (err=2)` | Pipe no existe — IKAR/juego no están activos |
-| `✗ Desconectado` | IKAR o juego se cerraron — reconectá |
+El título de cada ventana muestra el número de instancia: `Macro Manager v5 — Instancia #2`
 
 ---
 
 ## Cómo Funciona
 
 ```
-Python (MacroFKeys.py)
-        │
-        │  Named Pipe  \\.\pipe\scripthost-debug
-        ▼
-IKAR core.exe  (DLL inyectada en LU4)
-        │
-        │  Llamada interna al proceso del juego
-        ▼
-LU4 (Lineage Universe 4)  →  Servidor
+MacroFKeys.py
+     │
+     │  PostMessage / SendInput  (Win32 API)
+     ▼
+Ventana del juego (por HWND capturado)
+     │
+     ▼
+Proceso del juego recibe WM_KEYDOWN / WM_KEYUP
 ```
 
-El macro **no simula teclado ni mouse**. Envía un JSON por named pipe al core de IKAR, que a su vez llama directamente la función interna del juego para usar la habilidad. El anti-cheat no lo detecta porque no hay eventos de OS.
-
-### Formato del mensaje enviado
-
-```json
-{
-  "v": 1,
-  "type": "request",
-  "botId": "4",
-  "requestId": "py-1",
-  "payload": {
-    "@type": "use_fight_skill",
-    "skillId": 1042,
-    "ctrl": false,
-    "shift": false
-  }
-}
-```
+**No simula teclado a nivel de OS** (no usa keybd_event ni eventos globales). Envía mensajes directamente a la handle de la ventana destino.
 
 ---
 
 ## Solución de Problemas
 
-**No se puede conectar (err=2)**  
-→ LU4 no está abierto o IKAR core.exe no está inyectado en el proceso del juego.
+**"Primero capturá la ventana del juego"**  
+→ Presioná 🎯 Capturar ventana y hacé Alt+Tab al juego en los 3 segundos.
 
-**Skill se envía (✓) pero no pasa nada en el juego**  
-→ El Skill ID es incorrecto. Revisá el ID numérico real de la habilidad en los logs de IKAR.
+**La tecla no hace nada en el juego (Modo Fondo)**  
+→ El juego usa Raw Input. Cambiá a ⚡ Modo Flash.
 
-**El macro dispara muy rápido / muy lento**  
-→ Verificá la unidad: `1000 ms` = 1 segundo, `1000 s` = 16 minutos.
+**El juego parpadea molestamente (Modo Flash)**  
+→ Normal. El foco vuelve en ~30ms. Si el juego lo detecta como cheat, probá Modo Fondo.
 
-**La ventana queda detrás de LU4**  
-→ La ventana está en modo `always-on-top`. Minimizá y restaurá si queda tapada.
+**Una instancia se abre como #3 aunque solo hay una**  
+→ Los puertos 47200–47201 están ocupados por otro proceso. No afecta el funcionamiento.
 
 ---
 
@@ -147,9 +130,9 @@ El macro **no simula teclado ni mouse**. Envía un JSON por named pipe al core d
 
 ```
 lu4-macro/
-└── MacroFKeys.py    # Script principal — todo en un archivo, sin dependencias externas
+└── MacroFKeys.py    # Todo en un archivo — sin dependencias externas
 ```
 
 ---
 
-*Macro Manager v27 · AYI GROUP*
+*Macro Manager v5 · AYI GROUP*
